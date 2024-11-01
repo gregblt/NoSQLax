@@ -11,7 +11,7 @@ class CouchRepository {
 
   async create(data) {
     try {
-      const document = { ...data.getObject(), docType: this.entityClass.docType }; // Add doctype to the document
+      const document = { ...data, docType: this.entityClass.docType }; // Add doctype to the document
       this.validator.validateData(document); // Validate the data using the Validation class
       const response = await this.connection.insert(document); // Insert the document
       return new this.entityClass({ ...document, _id: response.id }); // Return instance of the entity class with assigned ID

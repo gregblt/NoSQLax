@@ -29,12 +29,20 @@ const validationSchema = {
   additionalProperties: false // Do not allow additional properties
 };
 
-// Define your entities by extanding the BaseEntity class
+const fields = [{ "name": null, "email": null }]
 class UserEntity extends BaseEntity {
+
+  name;
+  email;
+
   constructor(data = {}) {
     super(data); // Call the BaseEntity constructor
+
+
     this.name = data.name || '';
     this.email = data.email || '';
+
+
   }
 
   // Static validation schema for UserEntity
@@ -45,8 +53,8 @@ class UserEntity extends BaseEntity {
         name: { type: 'string' },
         email: { type: 'string' },
         docType: { type: 'string', const: 'user' },
-        _id: { type : 'string'},
-        _rev: { type : 'string'}
+        _id: { type: 'string' },
+        _rev: { type: 'string' }
       },
       required: ['name', 'email', 'docType'],
       additionalProperties: false,
@@ -57,14 +65,14 @@ class UserEntity extends BaseEntity {
   static docType = 'user'
 }
 
-// Define the user repository that will interact with the database by extending the CouchRepository class
+
 class UserRepository extends CouchRepository {
   constructor(nanoConnection) {
     super(nanoConnection, UserEntity); // Pass the connection and UserEntity to the base class
   }
 }
 
-// Define your user service
+
 class UserService {
   constructor(userRepository) {
     this.userRepository = userRepository;
@@ -108,7 +116,8 @@ const userService = new UserService(userRepository); // Create an instance of Us
       name: 'Jane Doe',
       email: 'jane.doe@example.com'
     });
-    
+
+
     const createdUser = await userService.createUser(newUser);
     console.log('User created:', createdUser);
 
@@ -130,5 +139,4 @@ const userService = new UserService(userRepository); // Create an instance of Us
     console.error('Error:', error.message);
   }
 })();
-
 ```
