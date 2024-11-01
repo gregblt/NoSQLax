@@ -1,0 +1,22 @@
+{
+  "name": "couchlaxdb",
+  "version": "0.0.1",
+  "description": "Decorators and base repo for couchdb CRUD operations",
+  "main": "src/index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "files": [
+    "src/"
+  ],
+  "author": "Gregory Bliault",
+  "license": "ISC",
+  "dependencies": {
+    "ajv": "^8.17.1",
+    "nano": "^10.1.4",
+    "reflect-metadata": "^0.2.2"
+  }
+}
