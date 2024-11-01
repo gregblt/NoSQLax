@@ -1,34 +1,21 @@
-const { getIdField } = require("../decorators/id");
-
+// src/BaseEntity.js
 class BaseEntity {
+
+  #_id;
+  #docType;
+  #_rev;
+
   constructor(data = {}) {
-    
-    Object.assign(this, data);
-    console.log(data)
-    console.log(this)
-    return new Proxy(this, {
-      get: (target, prop) => target[prop],
-      set: (target, prop, value) => {
-        target[prop] = value;
-        return true;
-      },
-    });
+    this._id = data._id || undefined; // Initialize ID; optional for new entities
+    this._rev = data._rev || undefined; // Initialize ID; optional for new entities
+    this.docType = data.docType;
   }
 
-  toJSON() {
-    const json = { ...this };
-    const idField = getIdField(this);
-    if (idField) {
-      json._id = this[idField];
-    }
-    return json;
+  get uuid () {
+    return this._id
   }
-
-  setId(id) {
-    const idField = getIdField(this);
-    if (idField) {
-      this[idField] = id;
-    }
+  get rev () {
+    return this._rev
   }
 }
 
