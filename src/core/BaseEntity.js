@@ -11,10 +11,10 @@ class BaseEntity {
     this.docType = data.docType;
   }
 
-  get uuid () {
+  get uuid() {
     return this._id
   }
-  get rev () {
+  get rev() {
     return this._rev
   }
 }
