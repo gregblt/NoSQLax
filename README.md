@@ -1,3 +1,5 @@
+<img src="nosqlax.png" alt="drawing" width="400"/>
+
 # NoSQLax 💤 - A Relaxed Repository for CouchDB
 NoSQLax is a lightweight JavaScript library designed to simplify and streamline CRUD operations with CouchDB. Inspired by the laid-back Snorlax and CouchDB's "Relax" philosophy, NoSQLax provides a unified and intuitive repository pattern to handle your data effortlessly.
 
