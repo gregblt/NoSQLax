@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "ES6",
+    "rootDir": "./src",
+    "module": "CommonJS",
+    "declaration": true,       // Generate .d.ts files
+    "outDir": "./dist",         // Output directory for compiled code
+    "strict": true,             // Enable strict type-checking
+    "esModuleInterop": true     // Enable interop between CommonJS and ES modules
+  },
+  "include": ["src"],           // Include the source files
+  "exclude": ["node_modules"]   // Exclude unnecessary files
+}
