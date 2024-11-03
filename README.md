@@ -23,7 +23,7 @@ const validationSchema = {
   type: "object",
   properties: {
     name: { type: "string" },
-    email: { type: "string", format: "email" },
+    email: { type: "string"},
   },
   required: ["name", "email"], // Define required fields
   additionalProperties: false // Do not allow additional properties
@@ -46,20 +46,7 @@ class UserEntity extends BaseEntity {
   }
 
   // Static validation schema for UserEntity
-  static get validationSchema() {
-    return {
-      type: 'object',
-      properties: {
-        name: { type: 'string' },
-        email: { type: 'string' },
-        docType: { type: 'string', const: 'user' },
-        _id: { type: 'string' },
-        _rev: { type: 'string' }
-      },
-      required: ['name', 'email', 'docType'],
-      additionalProperties: false,
-    };
-  }
+  static schemaOrSchemaId = validationSchema
 
   // Static docType for UserEntity
   static docType = 'user'
@@ -68,7 +55,8 @@ class UserEntity extends BaseEntity {
 
 class UserRepository extends CouchRepository {
   constructor(nanoConnection) {
-    super(nanoConnection, UserEntity); // Pass the connection and UserEntity to the base class
+    super(nanoConnection, {allErrors: true
+    }, UserEntity); // Pass the connection and UserEntity to the base class
   }
 }
 
