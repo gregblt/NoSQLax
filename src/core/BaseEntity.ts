@@ -21,7 +21,7 @@ abstract class BaseEntity {
   }
 
   // Getter for uuid
-  get uuid(): string | undefined {
+  get id(): string | undefined {
     return this._id;
   }
 

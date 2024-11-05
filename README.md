@@ -58,6 +58,7 @@ class UserRepository extends CouchRepository {
     super(nanoConnection, {allErrors: true
     }, UserEntity); // Pass the connection and UserEntity to the base class
   }
+
 }
 
 
@@ -69,6 +70,14 @@ class UserService {
   async createUser(userData) {
     // Create a new user using the UserRepository
     return await this.userRepository.create(userData);
+  }
+
+  async findUserByName(name) {
+    return await this.userRepository.findByName(name);
+  }
+
+  async findUserByEmailName(email, name) {
+    return await this.userRepository.findByEmailName(email, name);
   }
 
   async getUserById(id) {
@@ -110,18 +119,21 @@ const userService = new UserService(userRepository); // Create an instance of Us
     console.log('User created:', createdUser);
 
     // 2. Get the user by ID
-    const fetchedUser = await userService.getUserById(createdUser.uuid);
+    const fetchedUser = await userService.getUserById(createdUser.id);
     console.log('Fetched User:', fetchedUser);
 
+    const fetchedUserByName = await userService.findUserByEmailName('jane.doe@example.com','Jane Doe')
+    console.log('Fetched User by name:', fetchedUserByName);
+
     // 3. Update the user
-    const updatedUser = await userService.updateUser(createdUser.uuid, {
+    const updatedUser = await userService.updateUser(createdUser.id, {
       name: 'Jane Smith',
       email: 'jane.smith@example.com',
     });
     console.log('Updated User:', updatedUser);
 
     // 4. Delete the user
-    const deleteResponse = await userService.deleteUser(createdUser.uuid);
+    const deleteResponse = await userService.deleteUser(createdUser.id);
     console.log(deleteResponse);
   } catch (error) {
     console.error('Error:', error.message);

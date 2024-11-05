@@ -1,9 +1,9 @@
 {
   "name": "nosqlax",
-  "version": "0.0.5",
+  "version": "0.0.7",
   "description": "NoSQLax is a lightweight JavaScript library designed to simplify and streamline CRUD operations with CouchDB. NoSQLax provides a unified and intuitive repository pattern to handle your data effortlessly.",
-  "main": "dist/index.js", 
-  "types": "dist/index.d.ts",
+  "main": "lib/index.js", 
+  "types": "lib/index.d.ts",
   "directories": {
     "test": "test"
   },
@@ -16,7 +16,11 @@
     "src/"
   ],
   "author": "Gregory Bliault",
-  "license": "ISC",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gregblt/NoSQLax"
+  },
   "dependencies": {
     "ajv": "^8.17.1",
     "nano": "^10.1.4"

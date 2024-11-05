@@ -4,7 +4,7 @@
     "rootDir": "./src",
     "module": "CommonJS",
     "declaration": true,       // Generate .d.ts files
-    "outDir": "./dist",         // Output directory for compiled code
+    "outDir": "./lib",         // Output directory for compiled code
     "strict": true,             // Enable strict type-checking
     "esModuleInterop": true     // Enable interop between CommonJS and ES modules
   },
