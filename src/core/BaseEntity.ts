@@ -1,26 +1,28 @@
 // src/BaseEntity.ts
-
 abstract class BaseEntity {
-  // Using private properties with TypeScript
-  private _id?: string; // The `?` indicates that the property is optional
+  private _id?: string; 
   private _rev?: string;
 
-  static docType: string;
+  static type: string;  // Entity-specific type (e.g., "User", "Product", etc.)
   static schemaOrSchemaId: string | object;
+  
+  // Map from entity attributes to document fields, type is implicitly handled
+  static fieldMap: Record<string, string> = { type: "type" };  // Default fieldMap, type is implicitly required
 
-  // Constructor with an optional data object
-  constructor(data: { _id?: string; _rev?: string; docType: string } ) {
-    this._id = data._id; // Initialize _id, can be undefined
-    this._rev = data._rev; // Initialize _rev, can be undefined
+  constructor(data: { _id?: string; _rev?: string; [key: string]: any }) {
+    this._id = data._id; 
+    this._rev = data._rev;
+
+    // Ensure schemaOrSchemaId is defined
     if ((this.constructor as typeof BaseEntity).schemaOrSchemaId === undefined) {
-      throw new Error(`${this.constructor.name} must define docType`);
+      throw new Error(`${this.constructor.name} must define schemaOrSchemaId`);
     }
-    if ((this.constructor as typeof BaseEntity).docType === undefined) {
-      throw new Error(`${this.constructor.name} must define schemaOrSchemaId:`);
+    if ((this.constructor as typeof BaseEntity).type === undefined) {
+      throw new Error(`${this.constructor.name} must define type`);
     }
   }
 
-  // Getter for uuid
+  // Getter for id
   get id(): string | undefined {
     return this._id;
   }
@@ -28,6 +30,11 @@ abstract class BaseEntity {
   // Getter for rev
   get rev(): string | undefined {
     return this._rev;
+  }
+
+  // Static method to get field map for the current entity
+  static getFieldMap(): Record<string, string> {
+    return this.fieldMap;
   }
 }
 
