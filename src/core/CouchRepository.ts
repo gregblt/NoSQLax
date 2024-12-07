@@ -1,7 +1,6 @@
 import Nano, { DocumentScope } from "nano";
 import Validation from './Validation'; // Import the Validation class
 import BaseEntity from './BaseEntity';
-import QueryBuilder from './QueryBuilder'
 
 // Type for the entity class constructor
 type EntityClass = {
@@ -353,10 +352,6 @@ abstract class CouchRepository {
 
     // If no custom mapping, return the entity attribute name as the field name
     return entityAttr;
-  }
-
-  createQueryBuilder() {
-    return new QueryBuilder();
   }
 
 }
