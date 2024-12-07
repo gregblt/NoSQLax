@@ -6,7 +6,7 @@ on:
       - v1  # or whatever branch you want to test PRs against
   push:
     tags:
-      - 'v*.*.*'  # trigger on new version tags for publishing to npm
+      - '*.*.*-*'  # trigger on new version tags for publishing to npm
 
 jobs:
   test:
