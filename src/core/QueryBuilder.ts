@@ -1,14 +1,21 @@
 import Nano, { DocumentScope } from "nano";
+import { QueryExpressionMap } from "./QueryExpressionMap"
+import { WhereClause, WhereClauseCondition } from "./WhereClause";
 
-class QueryBuilder {
+abstract class QueryBuilder {
     private query: any; // The actual query being built (Mango query)
     private params: Record<string, any>; // Holds the parameterized values for the query
     private fieldsUsed: string[]; // To track the fields used for views
+    private wheres: Object[] ;
+
+    expressionMap: QueryExpressionMap;
   
     constructor() {
       this.query = { selector: {} };
       this.params = {};
       this.fieldsUsed = [];
+      this.expressionMap = new QueryExpressionMap();
+      this.wheres = []
     }
   
     // Define "where" with operators like =, !=, >, <, >=, <=
@@ -17,7 +24,8 @@ class QueryBuilder {
       if (!field || !operator || !param) {
         throw new Error('Invalid query string format. Must be "field operator value".');
       }
-  
+      
+      
       this.query.selector[field] = { [operator]: value };
       this.params[field] = value; // Add value to parameters
       this.fieldsUsed.push(field);
@@ -83,5 +91,45 @@ class QueryBuilder {
         return res.docs.length > 0 ? res.docs : [];
       }
     }
+
+    protected getWhereCondition(
+        where:
+            | string,
+    ): WhereClauseCondition {
+        
+        if (typeof where === "string") {
+            return where
+        }
+
+        const wheres: any[] = Array.isArray(where) ? where : [where]
+        const clauses: WhereClause[] = []
+
+        for (const where of wheres) {
+            const conditions: WhereClauseCondition = []
+
+            // Filter the conditions and set up the parameter values
+            for (const [aliasPath, parameterValue] of this.getPredicates(
+                where,
+            )) {
+                conditions.push({
+                    type: "and",
+                    condition: this.getWherePredicateCondition(
+                        aliasPath,
+                        parameterValue,
+                    ),
+                })
+            }
+
+            clauses.push({ type: "or", condition: conditions })
+        }
+
+        if (clauses.length === 1) {
+            return clauses[0].condition
+        }
+
+        return clauses
+    }
   }
+
+  export default QueryBuilder;
   

@@ -1,6 +1,7 @@
 import Nano, { DocumentScope } from "nano";
 import Validation from './Validation'; // Import the Validation class
 import BaseEntity from './BaseEntity';
+import QueryBuilder from './QueryBuilder'
 
 // Type for the entity class constructor
 type EntityClass = {
@@ -10,6 +11,60 @@ type EntityClass = {
   type: string;
   [key: string]: any;
 };
+
+// Mango operators
+const LOGICAL_OPERATORS = new Set([
+  '$and', '$or', '$not', '$nor', '$all', '$elemMatch', '$allMatch', '$keyMapMatch'
+]);
+
+const CONDITIONAL_OPERATORS = new Set([
+  '$lt', '$lte', '$eq', '$ne', '$gte', '$gt', '$exists', '$type', '$in', '$nin',
+  '$size', '$mod', '$regex', '$beginsWith'
+]);
+
+function translateSelector(
+  selector: Record<string, any>,
+  fieldMap: Record<string, string>
+): Record<string, any>  {
+  const translatedSelector: Record<string, any> = {};
+
+  for (const [key, value] of Object.entries(selector)) {
+    if (LOGICAL_OPERATORS.has(key)) {
+      // Logical operator (e.g., $and): recursively translate each sub-condition
+      if (Array.isArray(value)) {
+        translatedSelector[key] = value.map((subSelector) => translateSelector(subSelector, fieldMap));
+      } else {
+        translatedSelector[key] = translateSelector(value, fieldMap);
+      }
+    } else if (CONDITIONAL_OPERATORS.has(key)) {
+      // Conditional operator (e.g., $eq): Keep the key and value as-is, no further translation needed
+      translatedSelector[key] = value;
+    } else {
+      // Regular field name, so translate it using fieldMap
+      const translatedField = fieldMap[key] || key;
+
+      // If the value is an object and not a conditional operator, translate it recursively
+      if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+        const innerKeys = Object.keys(value);
+        const isConditional = innerKeys.every(k => CONDITIONAL_OPERATORS.has(k));
+
+        // If all inner keys are conditional, translate the field name and keep conditions as-is
+        if (isConditional) {
+          translatedSelector[translatedField] = value;
+        } else {
+          // Otherwise, translate recursively
+          translatedSelector[translatedField] = translateSelector(value, fieldMap);
+        }
+      } else {
+        // Primitive or array value, assign directly
+        translatedSelector[translatedField] = value;
+      }
+    }
+  }
+
+  return translatedSelector;
+}
+
 
 const transformToDocumentFormat = function (data: Record<string, any>, entityClass: EntityClass): Record<string, any> {
   const transformedData: Record<string, any> = {};
@@ -99,6 +154,8 @@ const findUsingMango = async function (query: Nano.MangoQuery, entityClass: Enti
     }
     query.selector[CouchRepository.getFieldNameFromFieldMap(entityClass, 'type')] = entityClass.type;
 
+    console.log(JSON.stringify(query,null,4))
+
     // Execute the query
     return await connection.find(query);
   } catch (err) {
@@ -166,7 +223,7 @@ abstract class CouchRepository {
   // 2. Find one document using a Mango selector
   async findOne(selector: any): Promise<BaseEntity | null> {
     try {
-      const res = await findUsingMango({ selector }, this.entityClass, this.connection);
+      const res = await findUsingMango({"selector":translateSelector(selector, this.entityClass.fieldMap)}, this.entityClass, this.connection);
 
       if (res.docs.length === 0) {
         return null; // No document found
@@ -181,7 +238,7 @@ abstract class CouchRepository {
   // 3. Find one document or fail
   async findOneOrFail(selector: any): Promise<BaseEntity> {
     try {
-      const res = await findUsingMango({ selector }, this.entityClass, this.connection);
+      const res = await findUsingMango( {"selector":translateSelector(selector, this.entityClass.fieldMap)} , this.entityClass, this.connection);
 
       if (res.docs.length === 0) {
         throw new Error("Document not found");
@@ -196,7 +253,7 @@ abstract class CouchRepository {
   // 4. Find many documents using a Mango selector
   async findMany(selector: any): Promise<BaseEntity[]> {
     try {
-      const res = await findUsingMango({ selector }, this.entityClass, this.connection);
+      const res = await findUsingMango({"selector":translateSelector(selector, this.entityClass.fieldMap)}, this.entityClass, this.connection);
 
       return res.docs.map((doc) => new this.entityClass(doc));
     } catch (err) {
@@ -296,6 +353,10 @@ abstract class CouchRepository {
 
     // If no custom mapping, return the entity attribute name as the field name
     return entityAttr;
+  }
+
+  createQueryBuilder() {
+    return new QueryBuilder();
   }
 
 }
