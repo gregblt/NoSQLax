@@ -90,11 +90,36 @@ describe('NoSQLax Testing Suite', () => {
         constructor(connection, options = {}) {
             super(connection, options, TestEntity);
         }
+
+        async findOrFailByAgeGreaterThanAndbByNameAndByCity(age, name, city) {
+            return await this.findOne({ name: { $eq: name }, age: { $gte: age }, city: { $eq: city } })
+        }
+
+        async getAllByAgeGreaterThanAndbByNameAndByCity(age, name, city) {
+            return await this.findMany({ "$and": [{ "$or": [{ name: { $eq: name } }] }, { "$not": { age: { $lt: age } } }], city: { $beginsWith: city } })
+        }
+
+        async getViewA(options) {
+            return this.dbConnection.view('design', 'view', options)
+        }
+
     }
 
     class TestRepositorySchemaId extends CouchRepository {
         constructor(connection, options = {}) {
             super(connection, options, TestEntitySchemaId);
+        }
+
+        async findOrFailByAgeGreaterThanAndbByNameAndByCity(age, name, city) {
+            return await this.findOne({ name: { $eq: name }, age: { $gte: age }, city: { $eq: city } })
+        }
+
+        async getAllByAgeGreaterThanAndbByNameAndByCity(age, name, city) {
+            return await this.findMany({ "$and": [{ "$or": [{ name: { $eq: name } }] }, { "$not": { age: { $lt: age } } }], city: { $beginsWith: city } })
+        }
+
+        async getViewA(options) {
+            return this.dbConnection.view('design', 'view', options)
         }
     }
 
@@ -121,8 +146,8 @@ describe('NoSQLax Testing Suite', () => {
             return await this.testRepository.find(id)
         }
 
-        async getByAgeGreaterThanAndbByNameAndByCity(age, name, city) {
-            return await this.testRepository.findMany({ "$and": [{ "$or": [{ name: { $eq: name } }] }, { "$not": { age: { $lt: age } } }], city: { $beginsWith: city } })
+        async getAllByAgeGreaterThanAndbByNameAndByCity(age, name, city) {
+            return await this.testRepository.getAllByAgeGreaterThanAndbByNameAndByCity(age, name, city)
         }
 
         async findOneOrFailById(id) {
@@ -130,7 +155,7 @@ describe('NoSQLax Testing Suite', () => {
         }
 
         async findOrFailByAgeGreaterThanAndbByNameAndByCity(age, name, city) {
-            return await this.testRepository.findOne({ name: { $eq: name }, age: { $gte: age }, city: { $eq: city } })
+            return await this.testRepository.findOrFailByAgeGreaterThanAndbByNameAndByCity(age, name, city)
         }
 
         async update(id, entity) {
@@ -144,7 +169,7 @@ describe('NoSQLax Testing Suite', () => {
         }
 
         async getViewA(options) {
-            return testRepository.dbConnection.view('design', 'view', options)
+            return testRepository.getViewA(options);
         }
 
         async findAll() {
@@ -266,7 +291,7 @@ describe('NoSQLax Testing Suite', () => {
             const mockDoc = { _id: '12345', _rev: '1-abc', name_field: 'John Doe', age: 30, city: 'Lyon' };
             mockConnection.find.mockResolvedValue({ docs: [mockDoc] });
 
-            const entities = await testService.getByAgeGreaterThanAndbByNameAndByCity(18, 'John Doe', 'Lyon')
+            const entities = await testService.getAllByAgeGreaterThanAndbByNameAndByCity(18, 'John Doe', 'Lyon')
 
             expect(mockConnection.find).toHaveBeenCalledWith(
                 expect.objectContaining({
