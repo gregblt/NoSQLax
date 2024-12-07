@@ -34,13 +34,12 @@ jobs:
     needs: test  # Ensure the tests are run first
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      # Setup .npmrc file to publish to npm
+      - uses: actions/setup-node@v4
         with:
-          node-version: 18  # Use any version (this is just for publishing)
+          node-version: '20.x'
+          registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
         run: npm install  # Install dependencies from the lockfile
@@ -50,6 +49,5 @@ jobs:
 
       - name: Publish to npm
         run: npm publish --access public  # Publish to npm
-
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}  # Ensure the token is set in GitHub Secrets
