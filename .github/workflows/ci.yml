@@ -26,7 +26,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          npm ci  # Installs dependencies based on the lockfile (package-lock.json)
+          npm install  # Installs dependencies 
 
       - name: Build the library
         run: npm run build  # Runs your build script from package.json
