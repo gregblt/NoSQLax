@@ -1,12 +1,8 @@
 name: Build, Test, and Publish Library
 
 on:
-  pull_request:
-    branches:
-      - v1  # or whatever branch you want to test PRs against
-  push:
-    tags:
-      - '*.*.*-*'  # trigger on new version tags for publishing to npm
+  release:
+    types: [published]
 
 jobs:
   test:
