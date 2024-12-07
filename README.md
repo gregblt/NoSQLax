@@ -1,142 +1,61 @@
 <img src="nosqlax.png" alt="drawing" width="400"/>
 
 # NoSQLax 💤 - A Relaxed Repository for CouchDB
-NoSQLax is a lightweight JavaScript library designed to simplify and streamline CRUD operations with CouchDB. Inspired by the laid-back Snorlax and CouchDB's "Relax" philosophy, NoSQLax provides a unified and intuitive repository pattern to handle your data effortlessly.
+NoSQLax is a modern, lightweight JavaScript library that makes working with CouchDB a breeze. Inspired by CouchDB’s “Relax” philosophy and the chill vibes of Snorlax, NoSQLax takes the hassle out of managing your data, offering a streamlined and intuitive repository pattern to handle CRUD operations effortlessly.
+
+Whether you're validating data, extending functionality, or simplifying database interactions, NoSQLax ensures your CouchDB experience is as laid-back as its motto.
 
 ## Key Features
-- Seamless CRUD Operations: Easily manage documents in CouchDB with consistent and easy-to-use methods.
-- Built-In JSON Schema Validation: Ensure data integrity with schema validation powered by AJV.
-- Extensible Architecture: Extend and customize repositories for more complex use cases.
-- Developer-Friendly: Focus on building your application with minimal boilerplate and maximum clarity.
-- Simplifies CouchDB Interactions: A clean and consistent API makes working with CouchDB as relaxed as its motto.
+- Effortless CRUD Operations: Manage CouchDB documents with a consistent, simple API for create, read, update, and delete. No boilerplate — just relax and code.
+- Seamless Schema Validation: Built-in JSON schema validation using AJV ensures your data is clean and reliable, either inline or through shared schema references.
+- Extensible by Design: Tailor repositories to your needs by easily adding custom methods and extending base functionality.
+- Entity-Centric Design: Map CouchDB documents to entities with support for data transformation and schema alignment.
+- Developer-Focused Simplicity: Minimize cognitive load with clear, predictable methods and patterns, so you can focus on building features, not debugging database interactions.
+- Flexible CouchDB Support: Works seamlessly with CouchDB’s schema-less nature while enabling structured and validated data models.
+
+## Why Choose NoSQLax?
+NoSQLax bridges the gap between CouchDB’s flexibility and the structure developers need. Whether you're building a lightweight application or scaling a robust API, NoSQLax gives you the tools to manage your data reliably without sacrificing simplicity or performance.
+Take a deep breath, relax, and let NoSQLax handle the heavy lifting for your CouchDB operations.
 
 ## Installation
+```npm install nosqlax```
 
 ## Getting started
-Example:
+1. Define your entity by extanding the BaseEntity. Specify it's type, the schema and the mapping between the entity properties and the CouchDB document. The schema can either be represented by and AJV object or the schema ID (we will see later how to pass ajv options with your schema corresponding to this ID to the repository.
 ```
-// example.js
-const { CouchRepository, BaseEntity } = require('nosqlax');
-
-// Define a validation schema for your User documents using JSON Schema syntax
-const validationSchema = {
-  type: "object",
+const { BaseEntity } = require('nosqlax');  // Your library
+// AJV schema for User validation
+const userSchema = {
+  type: 'object',
   properties: {
-    name: { type: "string" },
-    email: { type: "string"},
+    email: { type: 'string', format: 'email' },
+    name: { type: 'string' },
+    contact: {
+      type: 'object',
+      properties: {
+        email: { type: 'string', format: 'email' },
+      },
+    },
   },
-  required: ["name", "email"], // Define required fields
-  additionalProperties: false // Do not allow additional properties
+  required: ['email', 'name'],
 };
+class User extends BaseEntity {
+  static type = 'user';  
+  static schemaOrSchemaId = userSchema; 
+  static fieldMap = {
+    email: 'email',  // Entity's email field is mapped to 'email' in the document
+    name: 'name'
+    type: 'docType', // The type (here 'user', is specified by the docType property in the couchdb document
+    contactEmail: 'contact.email',  // Entity's contactEmail field is mapped to 'contact.email' in the document
+  };
 
-const fields = [{ "name": null, "email": null }]
-class UserEntity extends BaseEntity {
-
-  name;
-  email;
-
-  constructor(data = {}) {
-    super(data); // Call the BaseEntity constructor
-
-
-    this.name = data.name || '';
-    this.email = data.email || '';
-
-
-  }
-
-  // Static validation schema for UserEntity
-  static schemaOrSchemaId = validationSchema
-
-  // Static docType for UserEntity
-  static docType = 'user'
-}
-
-
-class UserRepository extends CouchRepository {
-  constructor(nanoConnection) {
-    super(nanoConnection, {allErrors: true
-    }, UserEntity); // Pass the connection and UserEntity to the base class
-  }
-
-}
-
-
-class UserService {
-  constructor(userRepository) {
-    this.userRepository = userRepository;
-  }
-
-  async createUser(userData) {
-    // Create a new user using the UserRepository
-    return await this.userRepository.create(userData);
-  }
-
-  async findUserByName(name) {
-    return await this.userRepository.findByName(name);
-  }
-
-  async findUserByEmailName(email, name) {
-    return await this.userRepository.findByEmailName(email, name);
-  }
-
-  async getUserById(id) {
-    // Fetch a user by ID
-    return await this.userRepository.read(id);
-  }
-
-  async updateUser(id, userData) {
-    // Update user information
-    return await this.userRepository.update(id, userData);
-  }
-
-  async deleteUser(id) {
-    // Delete a user by ID
-    return await this.userRepository.delete(id);
+  constructor(data) {
+    super(data);
+    this.email = data.email;
+    this.name = data.name;
+    this.contactEmail = data.contactEmail;
   }
 }
 
-// example.js
-const Nano = require('nano');
-
-// Example: Create a CouchDB connection using Nano (or your custom connection)
-const nano = Nano('http://localhost:5984');
-const usersDb = nano.db.use('users'); // Use the 'users' database
-
-const userRepository = new UserRepository(usersDb);
-const userService = new UserService(userRepository); // Create an instance of UserService
-
-(async () => {
-  try {
-    // 1. Create a new user
-    const newUser = new UserEntity({
-      name: 'Jane Doe',
-      email: 'jane.doe@example.com'
-    });
-
-
-    const createdUser = await userService.createUser(newUser);
-    console.log('User created:', createdUser);
-
-    // 2. Get the user by ID
-    const fetchedUser = await userService.getUserById(createdUser.id);
-    console.log('Fetched User:', fetchedUser);
-
-    const fetchedUserByName = await userService.findUserByEmailName('jane.doe@example.com','Jane Doe')
-    console.log('Fetched User by name:', fetchedUserByName);
-
-    // 3. Update the user
-    const updatedUser = await userService.updateUser(createdUser.id, {
-      name: 'Jane Smith',
-      email: 'jane.smith@example.com',
-    });
-    console.log('Updated User:', updatedUser);
-
-    // 4. Delete the user
-    const deleteResponse = await userService.deleteUser(createdUser.id);
-    console.log(deleteResponse);
-  } catch (error) {
-    console.error('Error:', error.message);
-  }
-})();
+module.exports = User;
 ```
