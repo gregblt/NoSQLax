@@ -21,7 +21,8 @@ Take a deep breath, relax, and let NoSQLax handle the heavy lifting for your Cou
 ```npm install nosqlax```
 
 ## Getting started
-1. Define your entity by extanding the BaseEntity. Specify it's type, the schema and the mapping between the entity properties and the CouchDB document. The schema can either be represented by and AJV object or the schema ID (we will see later how to pass ajv options with your schema corresponding to this ID to the repository.
+### 1. Define Your Entity
+Start by defining your entity by extending the `BaseEntity`. You can specify its type, the schema, and how the entity’s properties map to the CouchDB document. The schema can be represented by an AJV object, or you can use a schema ID (we’ll cover this later with AJV options). _id, _rev and the type property don't need to be put in the schemas, it's automatically added when validating.
 ```
 const { BaseEntity } = require('nosqlax');  // Your library
 // AJV schema for CouchDB document validation
@@ -59,7 +60,8 @@ class User extends BaseEntity {
 
 module.exports = User;
 ```
-2. Define the repository by extending CouchRepository. CouchRepository requires a nano connection, AJV options and the entity linked to this repository. By default CouchRepository provides basic CRUD operations based on document IDs and Mongo query selectors. But you can extend it to add your own methods to get data from CouchDB. For instance by querying views. You can access the nano connection and its methods using this.dbConnection. 
+### 2. Define the Repository
+Define the repository by extending `CouchRepository`. `CouchRepository` requires a nano connection, AJV options and the entity linked to this repository. By default `CouchRepository` provides basic CRUD operations based on document IDs and Mongo query selectors. But you can extend it to add your own methods to get data from CouchDB. For instance by querying views. You can access the nano connection and its methods using the `dbConnection` attribute of the CouchRepository. 
 ```
 const { CouchRepository } = require('nosqlax');  // Your library
 const User = require('../entities/User');  // Import the User entity
@@ -85,7 +87,8 @@ class UserRepository extends CouchRepository {
 
 module.exports = UserRepository;
 ```
-3. Build you business logic using the repository. For instance a UserService class. 
+### 3. Business Logic with Services
+Implement your business logic using the repository. Here’s an example with a `UserService` class to manage user operations.
 ```
 const UserRepository = require('../repositories/UserRepository');
 
@@ -131,7 +134,8 @@ class UserService {
 
 module.exports = UserService;
 ```
-4. Relax and have fun! When instanciating the repository, you can pass the schema in case you defined your entity schema as a schema ID instead of the schema itself.
+### 4. Relax and have fun!
+When instantiating the repository, you can pass the schema in case you defined your entity schema as a schema ID instead of the schema itself.
 ```
 const UserRepository = require('../repositories/UserRepository');
 const UserService = require('./services/UserService');
