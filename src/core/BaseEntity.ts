@@ -20,6 +20,8 @@ abstract class BaseEntity {
     if ((this.constructor as typeof BaseEntity).type === undefined) {
       throw new Error(`${this.constructor.name} must define type`);
     }
+
+    
   }
 
   // Getter for id

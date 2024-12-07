@@ -11,11 +11,10 @@ declare abstract class CouchRepository {
     private connection;
     private validator;
     private entityClass;
+    private fieldMap;
     constructor(nanoConnection: DocumentScope<Nano.MaybeDocument>, ajvOptions: any, entityClass: EntityClass);
-    find(id: string): Promise<BaseEntity | null>;
-    findOrFail(id: string): Promise<BaseEntity>;
-    findOne(selector: any): Promise<BaseEntity | null>;
-    findOneOrFail(selector: any): Promise<BaseEntity>;
+    find(id: string): Promise<BaseEntity>;
+    findOne(selector: any): Promise<BaseEntity>;
     findMany(selector: any): Promise<BaseEntity[]>;
     findAll(): Promise<BaseEntity[]>;
     create(data: EntityClass): Promise<BaseEntity>;
@@ -23,7 +22,7 @@ declare abstract class CouchRepository {
     delete(id: string): Promise<{
         message: string;
     }>;
-    static view(connection: DocumentScope<Nano.MaybeDocument>, designname: string, viewname: string, [params]: [any]): Promise<Nano.DocumentViewResponse<unknown, Nano.MaybeDocument>>;
-    static getFieldNameFromFieldMap(entityClass: EntityClass, entityAttr: string): string;
+    get dbConnection(): Nano.DocumentScope<Nano.MaybeDocument>;
+    static getFieldNameFromFieldMap(fieldMap: Record<string, string>, entityAttr: string): string;
 }
 export default CouchRepository;

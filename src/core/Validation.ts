@@ -1,4 +1,5 @@
 import Ajv, { Options, ValidateFunction } from 'ajv'; // Import Ajv types
+import { ValidationError } from './ValidationError';
 
 class Validation {
   private ajv: Ajv;
@@ -27,14 +28,14 @@ class Validation {
 
   validateData(data: any): void {
     const valid = this.validate(data); // Validate the data
-    if (!valid) {
-      // Construct an error message with all validation issues
-      const errorDetails = this.validate.errors?.map((err) => {
-        return JSON.stringify(err).replace(/\"/g, '');
-      }).join(', ');
 
-      // Throw an error with detailed validation messages
-      throw new Error(`Validation failed: ${errorDetails}`);
+    if (!valid) {
+      const errorDetails = this.validate.errors
+        ?.map((err) => JSON.stringify(err).replace(/\"/g, ''))
+        .join(', ');
+
+      // Throwing custom validation error with detailed error message
+      throw new ValidationError(errorDetails || 'Unknown validation error');
     }
   }
 }

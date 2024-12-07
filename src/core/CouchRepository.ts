@@ -1,6 +1,7 @@
 import Nano, { DocumentScope } from "nano";
 import Validation from './Validation'; // Import the Validation class
 import BaseEntity from './BaseEntity';
+import { DocumentNotFoundError } from "./DocumentNotFoundError";
 
 // Type for the entity class constructor
 type EntityClass = {
@@ -10,6 +11,14 @@ type EntityClass = {
   type: string;
   [key: string]: any;
 };
+
+const validate = function(object: Object, validator:Validation)  {
+  // remove _id and _rev as they are implicitely required
+  const objectToValidate = JSON.parse(JSON.stringify(object));
+    delete objectToValidate._id;
+    delete objectToValidate._rev;
+    validator.validateData(objectToValidate);
+}
 
 // Mango operators
 const LOGICAL_OPERATORS = new Set([
@@ -24,7 +33,7 @@ const CONDITIONAL_OPERATORS = new Set([
 function translateSelector(
   selector: Record<string, any>,
   fieldMap: Record<string, string>
-): Record<string, any>  {
+): Record<string, any> {
   const translatedSelector: Record<string, any> = {};
 
   for (const [key, value] of Object.entries(selector)) {
@@ -65,9 +74,11 @@ function translateSelector(
 }
 
 
-const transformToDocumentFormat = function (data: Record<string, any>, entityClass: EntityClass): Record<string, any> {
+const transformToDocumentFormat = function (data: Record<string, any>, entityClass: EntityClass, fieldMap: Record<string, string>): Record<string, any> {
+  
   const transformedData: Record<string, any> = {};
-  const fieldMap = entityClass.fieldMap || {};
+
+  data.type = entityClass.type; // add type
 
   // Map attributes to the document fields according to fieldMap
   for (const [attribute, field] of Object.entries(fieldMap)) {
@@ -95,9 +106,6 @@ const transformToDocumentFormat = function (data: Record<string, any>, entityCla
       transformedData[attribute] = value;
     }
   }
-
-  const typeField = CouchRepository.getFieldNameFromFieldMap(entityClass, 'type');
-  transformedData[typeField] = entityClass.type;
 
   return transformedData;
 }
@@ -139,7 +147,7 @@ const inverseTransform = function (document: Record<string, any>, fieldMap: Reco
 };
 
 
-const findUsingMango = async function (query: Nano.MangoQuery, entityClass: EntityClass, connection: DocumentScope<Nano.MaybeDocument>): Promise<Nano.MangoResponse<Nano.MaybeDocument>> {
+const findUsingMango = async function (query: Nano.MangoQuery, entityClass: EntityClass, connection: DocumentScope<Nano.MaybeDocument>, fieldMap:Record<string, any>): Promise<Nano.MangoResponse<Nano.MaybeDocument>> {
   try {
 
     // Ensure this method is used only from CouchRepository
@@ -151,9 +159,8 @@ const findUsingMango = async function (query: Nano.MangoQuery, entityClass: Enti
     if (!query.selector) {
       query.selector = {};
     }
-    query.selector[CouchRepository.getFieldNameFromFieldMap(entityClass, 'type')] = entityClass.type;
+    query.selector[CouchRepository.getFieldNameFromFieldMap(fieldMap, 'type')] = entityClass.type;
 
-    console.log(JSON.stringify(query,null,4))
 
     // Execute the query
     return await connection.find(query);
@@ -163,98 +170,78 @@ const findUsingMango = async function (query: Nano.MangoQuery, entityClass: Enti
 }
 
 abstract class CouchRepository {
+
   private connection: DocumentScope<Nano.MaybeDocument>; // Type from nano library
   private validator: Validation;
   private entityClass: EntityClass;
+  private fieldMap: Record<string, string>;
 
   constructor(nanoConnection: DocumentScope<Nano.MaybeDocument>, ajvOptions: any, entityClass: EntityClass) {
     // Check if entityClass extends BaseEntity
     if (!(entityClass.prototype instanceof BaseEntity)) {
-      throw new Error(`${entityClass.name} must extend BaseEntity`);
+      throw new Error(`entityClass must extend BaseEntity`);
     }
 
     this.connection = nanoConnection;
     this.entityClass = entityClass;
     this.validator = new Validation(ajvOptions, this.entityClass.schemaOrSchemaId);
 
+    // Get the fieldMap from the entity class, but filter out _id and _rev
+    const entityFieldMap = entityClass.fieldMap;
+    
+    // Create a new fieldMap by excluding _id and _rev as keys and values
+    this.fieldMap = Object.entries(entityFieldMap)
+      .filter(([key, value]) => key !== '_id' && key !== '_rev' && value !== '_id' && value !== '_rev')
+      .reduce((acc, [key, value]) => {
+        acc[key] = value;
+        return acc;
+      }, {} as Record<string, string>);
+
   }
 
   // 1. Find a document by its ID
-  async find(id: string): Promise<BaseEntity | null> {
+  async find(id: string): Promise<BaseEntity> {
     try {
       if (!id) {
         throw new Error("ID must be provided");
       }
 
-      const res = await findUsingMango({ selector: { _id: id } }, this.entityClass, this.connection);
+      const res = this.findOne({ _id: id } )
 
-      if (res.docs.length === 0) {
-        return null; // Document not found
-      }
-
-      return new this.entityClass(inverseTransform(res.docs[0], this.entityClass.fieldMap));
+      return res;
     } catch (err) {
       throw err;
     }
   }
 
-  // 1. Find a document by its ID
-  async findOrFail(id: string): Promise<BaseEntity> {
-    try {
-      if (!id) {
-        throw new Error("ID must be provided");
-      }
 
-      const res = await findUsingMango({ selector: { _id: id } }, this.entityClass, this.connection);
-
-      if (res.docs.length === 0) {
-        throw new Error("Document not found");
-      }
-
-      const transformed = inverseTransform(res.docs[0], this.entityClass.fieldMap)
-      console.log(transformed)
-      return new this.entityClass(transformed);
-    } catch (err) {
-      throw err;
-    }
-  }
 
   // 2. Find one document using a Mango selector
-  async findOne(selector: any): Promise<BaseEntity | null> {
+  async findOne(selector: any): Promise<BaseEntity> {
     try {
-      const res = await findUsingMango({"selector":translateSelector(selector, this.entityClass.fieldMap)}, this.entityClass, this.connection);
+      const res = await findUsingMango(
+        { "selector": translateSelector(selector, this.fieldMap) }, 
+        this.entityClass, 
+        this.connection, 
+        this.fieldMap);
 
       if (res.docs.length === 0) {
-        return null; // No document found
+        throw new DocumentNotFoundError(selector);
       }
 
-      return new this.entityClass(inverseTransform(res.docs[0], this.entityClass.fieldMap));
+      return new this.entityClass(inverseTransform(res.docs[0], this.fieldMap));
     } catch (err) {
       throw err;
     }
   }
 
-  // 3. Find one document or fail
-  async findOneOrFail(selector: any): Promise<BaseEntity> {
-    try {
-      const res = await findUsingMango( {"selector":translateSelector(selector, this.entityClass.fieldMap)} , this.entityClass, this.connection);
-
-      if (res.docs.length === 0) {
-        throw new Error("Document not found");
-      }
-
-      return new this.entityClass(inverseTransform(res.docs[0], this.entityClass.fieldMap));
-    } catch (err) {
-      throw err;
-    }
-  }
 
   // 4. Find many documents using a Mango selector
   async findMany(selector: any): Promise<BaseEntity[]> {
     try {
-      const res = await findUsingMango({"selector":translateSelector(selector, this.entityClass.fieldMap)}, this.entityClass, this.connection);
+      const res = await findUsingMango({ "selector": translateSelector(selector, this.fieldMap) }, this.entityClass, this.connection, this.fieldMap);
 
-      return res.docs.map((doc) => new this.entityClass(doc));
+      return res.docs.map((doc) => new this.entityClass(inverseTransform(doc, this.fieldMap)));
     } catch (err) {
       throw err;
     }
@@ -263,13 +250,15 @@ abstract class CouchRepository {
   // 5. Find all documents for the entity type
   async findAll(): Promise<BaseEntity[]> {
     try {
-      const res = await findUsingMango({ selector: {} }, this.entityClass, this.connection);
+      const res = await findUsingMango({ selector: {} }, this.entityClass, this.connection, this.fieldMap);
 
-      return res.docs.map((doc) => new this.entityClass(doc));
+      return res.docs.map((doc) => new this.entityClass(inverseTransform(doc, this.fieldMap)));
     } catch (err) {
       throw err;
     }
   }
+
+
 
 
   async create(data: EntityClass): Promise<BaseEntity> {
@@ -279,14 +268,18 @@ abstract class CouchRepository {
         throw new Error(`Data must be an instance of ${this.entityClass.name}`);
       }
 
-      const transformedData = transformToDocumentFormat(data,this.entityClass);
-      console.log(transformedData);  // For debugging the transformed data
+
+
+      const transformedData = transformToDocumentFormat(data, this.entityClass, this.fieldMap);
+
+
+      validate(transformedData, this.validator);
 
       // Insert the document into the database
       const response = await this.connection.insert(transformedData);
 
       // Return the newly created entity
-      return this.findOrFail(response.id);
+      return this.find(response.id);
 
     } catch (err) {
       throw err;
@@ -302,16 +295,20 @@ abstract class CouchRepository {
       if (existingDoc === null) {
         throw new Error("Document does not exists")
       }
-      const updatedDoc = {
+      const updatedDoc = transformToDocumentFormat({
         ...existingDoc,
         ...data,
-        [CouchRepository.getFieldNameFromFieldMap(this.entityClass, 'type')]: this.entityClass.type,
-        _id: id,
-        _rev: existingDoc.rev,
-      };
-      this.validator.validate(updatedDoc);
+      }, this.entityClass, this.fieldMap);
+      updatedDoc._id =  existingDoc.id;
+      updatedDoc._rev = existingDoc.rev
+
+
+      validate(updatedDoc, this.validator);
+
       const response = await this.connection.insert(updatedDoc);
-      return new this.entityClass({ ...updatedDoc, _rev: response.rev });
+      // Return the newly created entity
+      return this.find(response.id);
+
     } catch (err) {
       throw err;
     }
@@ -331,19 +328,13 @@ abstract class CouchRepository {
     }
   }
 
-  // 9. Use a view to fetch data
-  static async view(connection: DocumentScope<Nano.MaybeDocument>, designname: string, viewname: string, [params]: [any]): Promise<Nano.DocumentViewResponse<unknown, Nano.MaybeDocument>> {
-    try {
-      return await connection.view(designname, viewname, params);
-    } catch (err) {
-      throw err;
-    }
+  // expose the connection
+  get dbConnection() {
+    return this.connection;
   }
 
 
-  static getFieldNameFromFieldMap(entityClass: EntityClass, entityAttr: string): string {
-    // Check if fieldMap exists and contains the given entity attribute
-    const fieldMap = entityClass.fieldMap || {};
+  static getFieldNameFromFieldMap(fieldMap: Record<string,string>, entityAttr: string): string {
 
     // If a custom mapping exists in the fieldMap, return it
     if (fieldMap[entityAttr]) {
