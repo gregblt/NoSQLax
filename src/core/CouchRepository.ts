@@ -1,7 +1,9 @@
-import Nano, { DocumentScope } from "nano";
+import Nano, { DocumentScope, MangoQuery, MangoSelector } from "nano";
 import Validation from './Validation'; // Import the Validation class
 import BaseEntity from './BaseEntity';
 import { DocumentNotFoundError } from "./DocumentNotFoundError";
+
+type MangoOptions = Omit<MangoQuery, 'selector'>;
 
 // Type for the entity class constructor
 type EntityClass = {
@@ -147,18 +149,16 @@ const inverseTransform = function (document: Record<string, any>, fieldMap: Reco
 };
 
 
-const findUsingMango = async function (query: Nano.MangoQuery, entityClass: EntityClass, connection: DocumentScope<Nano.MaybeDocument>, fieldMap:Record<string, any>): Promise<Nano.MangoResponse<Nano.MaybeDocument>> {
+const findUsingMango = async function (selector: Nano.MangoSelector={}, options: MangoOptions={}, entityClass: EntityClass, connection: DocumentScope<Nano.MaybeDocument>, fieldMap:Record<string, any>): Promise<Nano.MangoResponse<Nano.MaybeDocument>> {
   try {
 
-    // Ensure this method is used only from CouchRepository
-    /*       if (this.constructor !== CouchRepository) {
-            throw new Error('This method can only be used by CouchRepository, not children classes.');
-          } */
 
-    // Add type to the selector if it's not already present
-    if (!query.selector) {
-      query.selector = {};
-    }
+    let query: MangoQuery = {
+      ...options,  // Spread the properties from MangoOptions
+      selector,    // Add the selector
+    };
+
+    // add type
     query.selector[CouchRepository.getFieldNameFromFieldMap(fieldMap, 'type')] = entityClass.type;
 
 
@@ -217,10 +217,12 @@ abstract class CouchRepository {
 
 
   // 2. Find one document using a Mango selector
-  async findOne(selector: any): Promise<BaseEntity> {
+  async findOne(selector: MangoSelector, options: MangoOptions = {}): Promise<BaseEntity> {
     try {
+
       const res = await findUsingMango(
-        { "selector": translateSelector(selector, this.fieldMap) }, 
+        translateSelector(selector, this.fieldMap),
+        options,
         this.entityClass, 
         this.connection, 
         this.fieldMap);
@@ -237,9 +239,12 @@ abstract class CouchRepository {
 
 
   // 4. Find many documents using a Mango selector
-  async findMany(selector: any): Promise<BaseEntity[]> {
+  async findMany(selector: MangoSelector, options: MangoOptions = {}): Promise<BaseEntity[]> {
     try {
-      const res = await findUsingMango({ "selector": translateSelector(selector, this.fieldMap) }, this.entityClass, this.connection, this.fieldMap);
+      const res = await findUsingMango(
+        translateSelector(selector, this.fieldMap),
+        options,
+        this.entityClass, this.connection, this.fieldMap);
 
       return res.docs.map((doc) => new this.entityClass(inverseTransform(doc, this.fieldMap)));
     } catch (err) {
@@ -248,9 +253,9 @@ abstract class CouchRepository {
   }
 
   // 5. Find all documents for the entity type
-  async findAll(): Promise<BaseEntity[]> {
+  async findAll(options: MangoOptions = {}): Promise<BaseEntity[]> {
     try {
-      const res = await findUsingMango({ selector: {} }, this.entityClass, this.connection, this.fieldMap);
+      const res = await findUsingMango({ }, options, this.entityClass, this.connection, this.fieldMap);
 
       return res.docs.map((doc) => new this.entityClass(inverseTransform(doc, this.fieldMap)));
     } catch (err) {
