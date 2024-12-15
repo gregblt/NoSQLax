@@ -6,14 +6,34 @@ import { jest } from '@jest/globals';
 import Nano from 'nano';
 import CouchRepository from '../lib/core/CouchRepository';
 import BaseEntity from '../lib/core/BaseEntity';
+import DataSource from '../lib/core/DataSource';
 
-// Mock connection to CouchDB
+
+
+/* jest.mock('nano', () => jest.fn(() => ({
+    use: jest.fn().mockReturnValue({
+        insert: jest.fn(),
+        find: jest.fn(),
+        destroy: jest.fn(),
+        view: jest.fn(),
+    }),
+})));
+ */
+// Define mockConnection globally
 const mockConnection = {
     insert: jest.fn(),
     find: jest.fn(),
     destroy: jest.fn(),
-    view: jest.fn()
+    view: jest.fn(),
+    use: jest.fn(() => mockConnection), // Ensure nested `use` calls return the mock
 };
+
+// Mock the nano library to return mockConnection
+jest.mock('nano', () => jest.fn(() => ({
+    use: jest.fn(() => mockConnection),
+})));
+
+
 const schema = {
     $id: "schema1",
     type: 'object',
@@ -178,9 +198,15 @@ describe('NoSQLax Testing Suite', () => {
 
     }
 
+    const dataSource = new DataSource({
+        url: 'http://localhost:5984',
+        database: 'test-db',
+    });
 
-    let testRepository = new TestRepository(mockConnection, {});
-    let testRepositorySchemaId = new TestRepositorySchemaId(mockConnection, {
+
+    let testRepository = new TestRepository(dataSource, {});
+    
+    let testRepositorySchemaId = new TestRepositorySchemaId(dataSource, {
         schemas: [schema],
         allErrors: true
       });
@@ -197,7 +223,7 @@ describe('NoSQLax Testing Suite', () => {
     it('should Check that repository are initialized with a valid Entity', async () => {
         const invalidEntity = { name: 'Jane Doe', age: 25 };
         // Expect the constructor to throw an error
-        expect(() => new CouchRepository(mockConnection, {}, invalidEntity)).toThrow('entityClass must extend BaseEntity');
+        expect(() => new CouchRepository(dataSource, {}, invalidEntity)).toThrow('entityClass must extend BaseEntity');
     })
 
     describe('Save functionality', () => {

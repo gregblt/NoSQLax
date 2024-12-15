@@ -2,6 +2,7 @@ import Nano, { DocumentScope, MangoQuery, MangoSelector } from "nano";
 import Validation from './Validation'; // Import the Validation class
 import BaseEntity from './BaseEntity';
 import { DocumentNotFoundError } from "./DocumentNotFoundError";
+import DataSource from "./DataSource";
 
 type MangoOptions = Omit<MangoQuery, 'selector'>;
 
@@ -171,18 +172,18 @@ const findUsingMango = async function (selector: Nano.MangoSelector={}, options:
 
 abstract class CouchRepository {
 
-  private connection: DocumentScope<Nano.MaybeDocument>; // Type from nano library
+  private dataSource: DataSource; // Type from nano library
   private validator: Validation;
   private entityClass: EntityClass;
   private fieldMap: Record<string, string>;
 
-  constructor(nanoConnection: DocumentScope<Nano.MaybeDocument>, ajvOptions: any, entityClass: EntityClass) {
+  constructor(ds: DataSource, ajvOptions: any, entityClass: EntityClass) {
     // Check if entityClass extends BaseEntity
     if (!(entityClass.prototype instanceof BaseEntity)) {
       throw new Error(`entityClass must extend BaseEntity`);
     }
 
-    this.connection = nanoConnection;
+    this.dataSource = ds;
     this.entityClass = entityClass;
     this.validator = new Validation(ajvOptions, this.entityClass.schemaOrSchemaId);
 
@@ -224,7 +225,7 @@ abstract class CouchRepository {
         translateSelector(selector, this.fieldMap),
         options,
         this.entityClass, 
-        this.connection, 
+        this.dataSource.connection, 
         this.fieldMap);
 
       if (res.docs.length === 0) {
@@ -244,7 +245,7 @@ abstract class CouchRepository {
       const res = await findUsingMango(
         translateSelector(selector, this.fieldMap),
         options,
-        this.entityClass, this.connection, this.fieldMap);
+        this.entityClass, this.dataSource.connection, this.fieldMap);
 
       return res.docs.map((doc) => new this.entityClass(inverseTransform(doc, this.fieldMap)));
     } catch (err) {
@@ -255,7 +256,7 @@ abstract class CouchRepository {
   // 5. Find all documents for the entity type
   async findAll(options: MangoOptions = {}): Promise<BaseEntity[]> {
     try {
-      const res = await findUsingMango({ }, options, this.entityClass, this.connection, this.fieldMap);
+      const res = await findUsingMango({ }, options, this.entityClass, this.dataSource.connection, this.fieldMap);
 
       return res.docs.map((doc) => new this.entityClass(inverseTransform(doc, this.fieldMap)));
     } catch (err) {
@@ -281,7 +282,7 @@ abstract class CouchRepository {
       validate(transformedData, this.validator);
 
       // Insert the document into the database
-      const response = await this.connection.insert(transformedData);
+      const response = await this.dataSource.connection.insert(transformedData);
 
       // Return the newly created entity
       return this.find(response.id);
@@ -310,7 +311,7 @@ abstract class CouchRepository {
 
       validate(updatedDoc, this.validator);
 
-      const response = await this.connection.insert(updatedDoc);
+      const response = await this.dataSource.connection.insert(updatedDoc);
       // Return the newly created entity
       return this.find(response.id);
 
@@ -326,7 +327,7 @@ abstract class CouchRepository {
       if (existingDoc === null) {
         throw new Error("Document does not exists")
       }
-      await this.connection.destroy(id, existingDoc.rev as string);
+      await this.dataSource.connection.destroy(id, existingDoc.rev as string);
       return { message: "Document deleted successfully" };
     } catch (err) {
       throw err;
@@ -335,7 +336,7 @@ abstract class CouchRepository {
 
   // expose the connection
   get dbConnection() {
-    return this.connection;
+    return this.dataSource.connection;
   }
 
 
